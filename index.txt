@@ -1,0 +1,359 @@
+WebBusinessTier
+---------------
+///Interface
+public interface IEmployee
+    {
+        List<EmployeeModel> GetEmployee();
+        int AddEmployee(EmployeeModel model);
+        bool UpdateEmployee(EmployeeModel model);
+        bool DeleteEmployee(int employeeId);
+        List<EmployeeModel> SearchEmployee(string searchText);
+    }
+
+///Repository
+ public class Employee : IEmployee
+    {
+        public int AddEmployee(EmployeeModel model)
+        {
+            SqlPara p = new SqlPara();
+            DataTable dt = new DataTable();
+            SqlParameter[] para = new SqlParameter[4];
+            DataManager objDataManager = new DataManager();
+            para[0] = p.GetPara("@FirstName", model.FirstName);
+            para[1] = p.GetPara("@LastName", model.LastName);
+            para[2] = p.GetPara("@Quantity", model.Quantity);
+            para[3] = p.GetPara("@Amount", model.Amount);
+            try
+            {
+                objDataManager.ExecuteNonQuery("AddEmployee", CommandType.StoredProcedure, para);
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public bool DeleteEmployee(int employeeId)
+        {
+            SqlPara p = new SqlPara();
+            DataTable dt = new DataTable();
+            SqlParameter[] para = new SqlParameter[1];
+            DataManager objDataManager = new DataManager();
+            para[0] = p.GetPara("@EmployeeId", employeeId);
+            try
+            {
+                objDataManager.ExecuteNonQuery("DeleteEmployee", CommandType.StoredProcedure, para);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public List<EmployeeModel> GetEmployee()
+        {
+            SqlPara p = new SqlPara();
+            List<EmployeeModel> model = new List<EmployeeModel>();
+            DataManager objDataManager = new DataManager();
+            try
+            {
+                var dt = objDataManager.ExecuteSelectCommand("GetEmployee", CommandType.StoredProcedure);
+                if (dt.Rows.Count > 0)
+                {
+                    model = (from DataRow dr in dt.Rows
+                             select new EmployeeModel
+                             {
+                                 Id = Convert.ToInt32(dr["Id"]),
+                                 FirstName = dr["FirstName"].ToString(),
+                                 LastName = dr["LastName"].ToString(),
+                                 Amount = Convert.ToDecimal(dr["Amount"].ToString()),
+                                 Quantity = Convert.ToInt32(dr["Quantity"]),
+                             }).ToList();
+                }
+                return model;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public List<EmployeeModel> SearchEmployee(string searchText)
+        {
+            SqlPara p = new SqlPara();
+            DataTable dt = new DataTable();
+            SqlParameter[] para = new SqlParameter[1];
+            List<EmployeeModel> model = new List<EmployeeModel>();
+            DataManager objDataManager = new DataManager();
+            para[0] = p.GetPara("@searchText", searchText);
+
+            try
+            {
+                dt = objDataManager.ExecuteParamerizedSelectCommand("SearchEmployee", CommandType.StoredProcedure, para);
+                if (dt.Rows.Count > 0)
+                {
+                    model = (from DataRow dr in dt.Rows
+                             select new EmployeeModel
+                             {
+                                 FirstName = dr["FirstName"].ToString(),
+                                 LastName = dr["LastName"].ToString(),
+                                 Amount = Convert.ToDecimal(dr["Amount"].ToString()),
+                                 Quantity = Convert.ToInt32(dr["Quantity"]),
+                             }).ToList();
+                }
+                return model;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public bool UpdateEmployee(EmployeeModel model)
+        {
+            SqlPara p = new SqlPara();
+            DataTable dt = new DataTable();
+            SqlParameter[] para = new SqlParameter[4];
+            DataManager objDataManager = new DataManager();
+            para[0] = p.GetPara("@FirstName", model.FirstName);
+            para[1] = p.GetPara("@LastName", model.LastName);
+            para[2] = p.GetPara("@Quantity", model.Quantity);
+            para[3] = p.GetPara("@Amount", model.Amount);
+            try
+            {
+                objDataManager.ExecuteNonQuery("UpdateEmployee", CommandType.StoredProcedure, para);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+    }
+
+///CORE
+public class DataManager
+    {
+        SqlConnection con = null;
+
+        public DataManager()
+        {
+            con = new SqlConnection(ConfigurationManager.ConnectionStrings["MyConnectionString"].ConnectionString);
+        }
+
+        public DataTable ExecuteSelectCommand(string SPName, CommandType cmdType)
+        {
+            SqlCommand cmd = null;
+            DataTable table = new DataTable();
+
+            cmd = con.CreateCommand();
+            cmd.CommandType = cmdType;
+            cmd.CommandText = SPName;
+
+            try
+            {
+                con.Open();
+
+                SqlDataAdapter da = null;
+                using (da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(table);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                cmd.Dispose();
+                cmd = null;
+                con.Close();
+            }
+
+            return table;
+        }
+
+        public DataTable ExecuteParamerizedSelectCommand(string SPName, CommandType cmdType, SqlParameter[] param)
+        {
+            SqlCommand cmd = null;
+            DataTable table = new DataTable();
+            cmd = con.CreateCommand();
+
+            cmd.CommandType = cmdType;
+            cmd.CommandText = SPName;
+            cmd.Parameters.AddRange(param);
+
+            try
+            {
+                con.Open();
+
+                SqlDataAdapter da = null;
+                using (da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(table);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                cmd.Dispose();
+                cmd = null;
+                con.Close();
+            }
+
+            return table;
+        }
+
+        public bool ExecuteNonQuery(string SPName, CommandType cmdType, SqlParameter[] pars)
+        {
+            SqlCommand cmd = null;
+            int res = 0;
+
+            cmd = con.CreateCommand();
+
+            cmd.CommandType = cmdType;
+            cmd.CommandText = SPName;
+            cmd.Parameters.AddRange(pars);
+            try
+            {
+                con.Open();
+                res = cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                cmd.Dispose();
+                cmd = null;
+                con.Close();
+            }
+            if (res >= 1)
+            {
+                return true;
+            }
+            return false;
+        }
+    }
+
+
+public class SqlPara
+    {
+        public SqlParameter GetPara(string ParaName, string ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.VarChar;
+            return para;
+        }
+
+        public SqlParameter GetPara(string ParaName, bool ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.Bit;
+            return para;
+        }
+
+        public SqlParameter GetPara(string ParaName, double ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.Money;
+            return para;
+        }
+
+        public SqlParameter GetPara(string ParaName, DataTable ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.DateTime;
+            return para;
+        }
+
+        public SqlParameter GetPara(string ParaName, short? ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.Int;
+            return para;
+        }
+
+        /// <summary>
+        /// New
+        /// </summary>
+        /// <param name="ParaName"></param>
+        /// <param name="ParaValue"></param>
+        /// <returns></returns>
+        public SqlParameter GetPara(string ParaName, decimal ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.Decimal;
+            return para;
+        }
+        public SqlParameter GetPara(string ParaName, int ParaValue)
+        {
+            SqlParameter para = new SqlParameter();
+            para.ParameterName = ParaName;
+            para.SqlValue = ParaValue;
+            para.SqlDbType = SqlDbType.Int;
+            return para;
+        }
+    }
+
+//DataModel
+public class EmployeeModel
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public int Quantity { get; set; }
+        public decimal Amount { get; set; }
+
+
+        //public int Id { get; set; }
+        //[Required(ErrorMessage = "First name required")]
+        //[StringLength(100, MinimumLength = 5, ErrorMessage = "fisrt name must be 5 character")]
+        //public string FirstName { get; set; }
+
+        //[Required(ErrorMessage = "Last name required")]
+        //[StringLength(100, MinimumLength = 5, ErrorMessage = "last name must be 5 character")]
+        //public string LastName { get; set; }
+
+        //[Required(ErrorMessage = "Age must be required")]
+        //[Range(0, int.MaxValue, ErrorMessage = "please enter valid age")]
+        //public int Age { get; set; }
+
+        //[Required(ErrorMessage = "select gender")]
+        //public int Gender { get; set; }
+
+        //[Required(ErrorMessage = "please enter date")]
+        //[DataType(DataType.Date)]
+        //public DateTime DateofJoining { get; set; }
+        //public bool Active { get; set; }
+
+        //[Required(ErrorMessage = "select Department")]
+        //[Range(1, int.MaxValue, ErrorMessage = "select Department")]
+        //public int DepartmentId { get; set; }
+    }
+
+
+ <connectionStrings>
+    <add name="MyConnectionString" connectionString="Server=(local); Database=DemoDB;user id=sa;password=softways@123;Integrated Security=True;" providerName="System.Data.SqlClient" />
+  </connectionStrings>
+
+
